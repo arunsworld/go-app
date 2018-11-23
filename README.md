@@ -1,0 +1,1 @@
+go-app is a simple web application starter kit written in Go.
