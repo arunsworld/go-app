@@ -47,6 +47,32 @@ type Chatter struct {
 	name       string
 	conn       *websocket.Conn
 	lastActive time.Time
+	writes     chan []byte
+	evict      chan struct{}
+}
+
+// Method on chatter that takes responsibility for writing to the WebSocket
+// It also deals with eviction requests and removes itself from the list of Chatters
+func (c *Chatter) run() {
+	go func() {
+		evicted := false
+		for !evicted {
+			select {
+			case p := <-c.writes:
+				if err := c.conn.WriteMessage(websocket.TextMessage, p); err != nil {
+					log.Printf("Couldn't send message to: %s. (%s). Error: %v.\n", c.name, c.uuid, err)
+				}
+			case <-c.evict:
+				evicted = true
+			}
+		}
+		if closeErr := c.conn.Close(); closeErr != nil {
+			log.Println("Error while closing:", closeErr)
+		}
+		chatters.Delete(c.uuid)
+		broadcastEviction(c)
+		fmt.Printf("%s (%s) evicted.\n", c.name, c.uuid)
+	}()
 }
 
 type chatMessage struct {
@@ -66,21 +92,26 @@ func ChatWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	connectionUUID, _ := uuid.NewV4()
 	chatter := &Chatter{
 		uuid:       connectionUUID.String(),
-		name:       "Unidentified",
+		name:       "",
 		conn:       conn,
 		lastActive: time.Now(),
+		writes:     make(chan []byte, 5),
+		evict:      make(chan struct{}, 3),
 	}
 	chatters.Store(chatter.uuid, chatter)
+	chatter.run()
 	log.Println("Got a new connection:", chatter.uuid)
 	for {
-		messageType, p, err := conn.ReadMessage()
+		_, p, err := conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
-			evictAndBroadcast(chatter)
+			chatter.evict <- struct{}{}
 			return
 		}
 		msg := parseMessage(p)
-		chatter.name = msg.Name
+		if chatter.name == "" {
+			chatter.name = msg.Name
+		}
 		chatter.lastActive = time.Now()
 		switch msg.Text {
 		case "who?", "Who?":
@@ -89,10 +120,7 @@ func ChatWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			// Broadcast message to all chatters
 			chatters.Range(func(uid, c interface{}) bool {
 				peer := c.(*Chatter)
-				if err := peer.conn.WriteMessage(messageType, p); err != nil {
-					log.Println(err)
-					log.Printf("Couldn't send message to: %s. (%s).\n", peer.name, uid)
-				}
+				peer.writes <- p
 				return true
 			})
 		}
@@ -105,7 +133,6 @@ func cleanupSweep() {
 	chatters.Range(func(_, c interface{}) bool {
 		chatter := c.(*Chatter)
 		inactiveFor := now.Sub(chatter.lastActive)
-		fmt.Printf("%s is inactive for %v\n", chatter.name, inactiveFor)
 		if inactiveFor.Minutes() > 5 {
 			evictionList = append(evictionList, chatter)
 		}
@@ -113,9 +140,7 @@ func cleanupSweep() {
 	})
 	for _, chatter := range evictionList {
 		fmt.Printf("Evicting %s due to timeout.\n", chatter.name)
-		if closeErr := chatter.conn.Close(); closeErr != nil {
-			log.Println("Error while closing:", closeErr)
-		}
+		chatter.evict <- struct{}{}
 	}
 }
 
@@ -131,7 +156,7 @@ func replyToWho(chatter *Chatter) {
 	}
 	whoReplyMsg := chatMessage{Name: "Chat Bot", Text: replyMsg}
 	whoReply, _ := json.Marshal(whoReplyMsg)
-	chatter.conn.WriteMessage(websocket.TextMessage, whoReply)
+	chatter.writes <- whoReply
 }
 
 func parseMessage(p []byte) *chatMessage {
@@ -143,20 +168,12 @@ func parseMessage(p []byte) *chatMessage {
 	return msg
 }
 
-func evictAndBroadcast(chatter *Chatter) {
-	if closeErr := chatter.conn.Close(); closeErr != nil {
-		log.Println("Error while closing:", closeErr)
-	}
-	chatters.Delete(chatter.uuid)
-	log.Printf("Evicted connection: %s. (%s).\n", chatter.name, chatter.uuid)
+func broadcastEviction(chatter *Chatter) {
 	evictionMsg := chatMessage{Name: "Chat Bot", Text: fmt.Sprintf("%s left.", chatter.name)}
 	evictionMsgJSON, _ := json.Marshal(evictionMsg)
 	chatters.Range(func(uid, c interface{}) bool {
 		peer := c.(*Chatter)
-		if err := peer.conn.WriteMessage(websocket.TextMessage, evictionMsgJSON); err != nil {
-			log.Println(err)
-			log.Printf("Couldn't send eviction message to: %s. (%s).\n", peer.name, uid)
-		}
+		peer.writes <- evictionMsgJSON
 		return true
 	})
 }

@@ -3,7 +3,6 @@ package apps
 import (
 	"github.com/arunsworld/gopherjs/websocket"
 	"github.com/gopherjs/gopherjs/js"
-	"honnef.co/go/js/console"
 	"honnef.co/go/js/dom"
 )
 
@@ -85,11 +84,9 @@ var ChatContentProducer = func() *dom.HTMLDivElement {
 			return
 		}
 		chatSocket.AddEventListener("error", false, func(e *js.Object) {
-			console.Log("error")
 			connectionClosed <- true
 		})
 		chatSocket.AddEventListener("close", false, func(e *js.Object) {
-			console.Log("close")
 			connectionClosed <- true
 		})
 		chatSocket.AddEventListener("open", false, func(e *js.Object) {
@@ -102,7 +99,7 @@ var ChatContentProducer = func() *dom.HTMLDivElement {
 	connectBtn.AddEventListener("click", false, makeConnection)
 	name.AddEventListener("keypress", false, func(e dom.Event) {
 		ke := e.(*dom.KeyboardEvent)
-		if ke.KeyCode == 13 {
+		if ke.Key == "Enter" || ke.KeyCode == 13 {
 			makeConnection(e)
 		}
 	})
@@ -111,7 +108,7 @@ var ChatContentProducer = func() *dom.HTMLDivElement {
 	newchat := f.GetElementByID("newchat").(*dom.HTMLInputElement)
 	newchat.AddEventListener("keypress", false, func(e dom.Event) {
 		ke := e.(*dom.KeyboardEvent)
-		if ke.KeyCode == 13 {
+		if ke.Key == "Enter" || ke.KeyCode == 13 {
 			if newchat.Value == "" {
 				return
 			}
