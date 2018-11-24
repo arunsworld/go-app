@@ -19,6 +19,11 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+var (
+	cleanupFrequency        = time.Minute
+	cleanupTimeoutInSeconds = 60 * 3
+)
+
 func init() {
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		origin, ok := r.Header["Origin"]
@@ -35,8 +40,8 @@ func init() {
 	}
 	go func() {
 		for {
+			<-time.After(cleanupFrequency)
 			cleanupSweep()
-			time.Sleep(time.Minute)
 		}
 	}()
 }
@@ -54,25 +59,22 @@ type Chatter struct {
 // Method on chatter that takes responsibility for writing to the WebSocket
 // It also deals with eviction requests and removes itself from the list of Chatters
 func (c *Chatter) run() {
-	go func() {
-		evicted := false
-		for !evicted {
-			select {
-			case p := <-c.writes:
-				if err := c.conn.WriteMessage(websocket.TextMessage, p); err != nil {
-					log.Printf("Couldn't send message to: %s. (%s). Error: %v.\n", c.name, c.uuid, err)
-				}
-			case <-c.evict:
-				evicted = true
+	for {
+		select {
+		case p := <-c.writes:
+			if err := c.conn.WriteMessage(websocket.TextMessage, p); err != nil {
+				log.Printf("Couldn't send message to: %s. (%s). Error: %v.\n", c.name, c.uuid, err)
 			}
+		case <-c.evict:
+			chatters.Delete(c.uuid)
+			if closeErr := c.conn.Close(); closeErr != nil {
+				log.Println("Error while closing:", closeErr)
+			}
+			broadcastEviction(c)
+			fmt.Printf("%s (%s) evicted.\n", c.name, c.uuid)
+			return
 		}
-		if closeErr := c.conn.Close(); closeErr != nil {
-			log.Println("Error while closing:", closeErr)
-		}
-		chatters.Delete(c.uuid)
-		broadcastEviction(c)
-		fmt.Printf("%s (%s) evicted.\n", c.name, c.uuid)
-	}()
+	}
 }
 
 type chatMessage struct {
@@ -99,7 +101,7 @@ func ChatWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		evict:      make(chan struct{}, 3),
 	}
 	chatters.Store(chatter.uuid, chatter)
-	chatter.run()
+	go chatter.run()
 	log.Println("Got a new connection:", chatter.uuid)
 	for {
 		_, p, err := conn.ReadMessage()
@@ -133,7 +135,7 @@ func cleanupSweep() {
 	chatters.Range(func(_, c interface{}) bool {
 		chatter := c.(*Chatter)
 		inactiveFor := now.Sub(chatter.lastActive)
-		if inactiveFor.Minutes() > 5 {
+		if int(inactiveFor.Seconds()) > cleanupTimeoutInSeconds {
 			evictionList = append(evictionList, chatter)
 		}
 		return true

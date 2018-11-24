@@ -3,6 +3,7 @@ package apps
 import (
 	"github.com/arunsworld/gopherjs/websocket"
 	"github.com/gopherjs/gopherjs/js"
+	"honnef.co/go/js/console"
 	"honnef.co/go/js/dom"
 )
 
@@ -113,10 +114,14 @@ var ChatContentProducer = func() *dom.HTMLDivElement {
 				return
 			}
 			msgTxt := newchat.Value
-			chatSocket.Send(JSON.Call("stringify", js.M{
+			console.Log(chatSocket.ReadyState.String())
+			err := chatSocket.Send(JSON.Call("stringify", js.M{
 				"name": name.Value,
 				"text": msgTxt,
 			}))
+			if err != nil {
+				console.Log(err.Error())
+			}
 			newchat.Value = ""
 		}
 	})
