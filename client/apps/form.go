@@ -1,8 +1,12 @@
 package apps
 
 import (
+	"github.com/arunsworld/gopherjs/datetimepicker"
 	"github.com/arunsworld/gopherjs/dropzone"
 	"github.com/arunsworld/gopherjs/http"
+	"github.com/arunsworld/gopherjs/select2"
+	"honnef.co/go/js/console"
+	"honnef.co/go/js/xhr"
 
 	"github.com/gopherjs/gopherjs/js"
 
@@ -30,8 +34,22 @@ var formContentHTML = `
 								<div class="invalid-feedback">A password is required. It should have atleast 6 letters.</div>
 							</div>
 						</div>
-						<button class="btn btn-success" id="button">Click Me!</button>
-						<button class="btn btn-default" id="reset">Reset</button>
+						<div class="form-row">
+							<div class="form-group col-md-6">
+								<label for="select2">Choices</label>
+								<select class="form-control" id="select2">
+									<option></option>
+								</select>
+								<div class="invalid-feedback" id="choices-feedback">A selection from Choices is required.</div>
+							</div>
+							<div class="form-group col-md-6">
+								<label for="datetimepicker">Date &amp; Time</label>
+								<input class="form-control" type="text" id="datetimepicker" required>
+								<div class="invalid-feedback">Date &amp; Time is required.</div>
+							</div>
+						</div>
+						<button class="btn btn-success" id="button">Go!</button>
+						<button class="btn btn-secondary" id="reset">Reset</button>
 					</form>
 				</div>
 			</div>
@@ -44,28 +62,56 @@ var formContentHTML = `
 						<div class="dz-message" style="font-size: 2rem; color: #967ADC; text-align: center;">Upload</div>
 					</div>
 					<br/>
-					<button class="btn btn-default" id="clear">Clear</button>
+					<button class="btn btn-secondary" id="clear">Clear</button>
 				</div>
 			</div>
 		</div>
 	</div>
 `
 
-type creds struct {
-	*js.Object
-	email    string `js:"email"`
-	password string `js:"password"`
-}
-
 // FormContentProducer produces a Div element containing a form and it's behaviors
 var FormContentProducer = func() *dom.HTMLDivElement {
 	f, result := divElementFromContent(formContentHTML)
+
+	select2Elem := f.GetElementByID("select2")
+	s2 := select2.NewSelect2(select2Elem, select2.Options{})
+	selectionStream := make(chan *select2.Selection)
+	choicesFeedback := f.GetElementByID("choices-feedback").(*dom.HTMLDivElement)
+	go func() {
+		for {
+			selection := <-selectionStream
+			if selection.ID != "" {
+				choicesFeedback.Style().Set("display", "none")
+			}
+		}
+	}()
+	s2.Subscribe(selectionStream)
+	go func() {
+		rsp := make(chan http.Response, 1)
+		http.GET("/api/choices", nil, http.Options{
+			ResponseType: xhr.JSON,
+		}, rsp)
+		ch := <-rsp
+		if ch.XhrRequest.Response == nil {
+			js.Global.Call("alert", "Could not load choices... please refresh the page.")
+			return
+		}
+		err := s2.ModifyOptions(ch.XhrRequest.Response)
+		if err != nil {
+			console.Log(err.Error())
+			js.Global.Call("alert", "Could not load choices... please refresh the page.")
+		}
+	}()
+
+	dtpElem := f.GetElementByID("datetimepicker")
+	dtp := datetimepicker.NewDatetimepicker(dtpElem, datetimepicker.Options{})
 
 	form := f.GetElementByID("form").(*dom.HTMLFormElement)
 	btn := f.GetElementByID("button").(*dom.HTMLButtonElement)
 	reset := f.GetElementByID("reset").(*dom.HTMLButtonElement)
 	reset.AddEventListener("click", false, func(e dom.Event) {
-		resetForm(form)
+		choicesFeedback.Style().Set("display", "none")
+		resetForm(form, s2)
 		e.PreventDefault()
 		e.StopPropagation()
 	})
@@ -74,16 +120,24 @@ var FormContentProducer = func() *dom.HTMLDivElement {
 	form.AddEventListener("submit", false, func(e dom.Event) {
 		e.PreventDefault()
 		e.StopPropagation()
+		choicesFeedback.Style().Set("display", "none")
 		form.Class().Add("was-validated")
+		choice := s2.GetSelection()
+		if len(choice) == 0 || choice[0].ID == "" {
+			choicesFeedback.Style().Set("display", "block")
+			return
+		}
 		if form.CheckValidity() {
-			c := &creds{Object: js.Global.Get("Object").New()}
-			c.email = email.Value
-			c.password = pwd.Value
-			formData := js.Global.Get("JSON").Call("stringify", c).String()
-			options := http.Options{}
+			c := js.M{
+				"email":    email.Value,
+				"password": pwd.Value,
+				"datetime": dtp.GetDate(),
+				"choice":   choice[0].ID,
+			}
+			formData := JSON.Call("stringify", c).String()
 			response := make(chan http.Response, 1)
 			go func() {
-				http.POST("/api/form-submit", formData, options, response)
+				http.POST("/api/form-submit", formData, http.Options{}, response)
 				btn.Disabled = true
 				defer func() { btn.Disabled = false }()
 				rsp := <-response
@@ -92,7 +146,7 @@ var FormContentProducer = func() *dom.HTMLDivElement {
 					return
 				}
 				js.Global.Call("alert", "Submitted successfully...")
-				resetForm(form)
+				resetForm(form, s2)
 			}()
 		}
 	})
@@ -110,9 +164,10 @@ var FormContentProducer = func() *dom.HTMLDivElement {
 	return result
 }
 
-func resetForm(f *dom.HTMLFormElement) {
+func resetForm(f *dom.HTMLFormElement, s *select2.Select2) {
 	f.Class().Remove("was-validated")
 	for _, e := range f.GetElementsByTagName("input") {
 		(e.(*dom.HTMLInputElement)).Value = ""
 	}
+	s.ResetSelection()
 }

@@ -7,13 +7,32 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gobuffalo/uuid"
 )
 
 type creds struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	Datetime time.Time `json:"datetime"`
+	Choice   string    `json:"choice"`
+}
+
+// ChoicesHandler returns an array of choices
+func ChoicesHandler(w http.ResponseWriter, r *http.Request) {
+	result := []map[string]string{
+		{"id": "1", "text": "Assamese"},
+		{"id": "2", "text": "Gujarati"},
+		{"id": "3", "text": "Kannada"},
+		{"id": "4", "text": "Kashmiri"},
+	}
+	resp, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(resp)
 }
 
 // FormHandler handles input from a form
@@ -22,11 +41,11 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 	c := &creds{}
 	err := decoder.Decode(c)
 	if err != nil {
-		log.Println(err)
+		log.Println("Invalid JSON being sent to FormHandler. Error:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(*c)
+	// fmt.Printf("%+v\n", *c)
 	fmt.Fprintln(w, "OK")
 }
 
@@ -34,6 +53,7 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	f, header, err := r.FormFile("file")
 	if err != nil {
+		log.Println("Bad request being sent to UploadHandler. Error:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

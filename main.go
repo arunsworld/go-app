@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/arunsworld/go-app/handlers"
@@ -23,15 +24,22 @@ func main() {
 
 	mux.HandleFunc("/", handlers.IndexHandler(box))
 	mux.HandleFunc("/form", handlers.IndexHandler(box))
+	mux.HandleFunc("/chat", handlers.IndexHandler(box))
+	mux.HandleFunc("/chatws", handlers.ChatWebSocketHandler)
 
 	api := mux.PathPrefix("/api").Subrouter()
+	api.HandleFunc("/choices", handlers.ChoicesHandler).Methods("GET")
 	api.HandleFunc("/form-submit", handlers.FormHandler).Methods("POST")
 	api.HandleFunc("/upload", handlers.UploadHandler).Methods("POST")
 
 	handlers.SetupStatic(mux, staticBox)
 
-	fmt.Println("Serving on port 9095...")
-	serve(secureMux(mux), ":9095")
+	port, ok := os.LookupEnv("PORT")
+	if !ok {
+		port = "80"
+	}
+	fmt.Printf("Serving on port %s...\n", port)
+	serve(secureMux(mux), fmt.Sprintf(":%s", port))
 }
 
 func secureMux(mux *mux.Router) http.Handler {
@@ -55,8 +63,8 @@ func serve(handler http.Handler, address string) {
 	srv := http.Server{
 		Addr:         address,
 		Handler:      handler,
-		ReadTimeout:  time.Second * 5,
-		WriteTimeout: time.Second * 5,
+		ReadTimeout:  time.Second * 15,
+		WriteTimeout: time.Second * 15,
 	}
 	log.Fatal(srv.ListenAndServe())
 }

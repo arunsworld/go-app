@@ -21,6 +21,7 @@ func main() {
 	url := currentURL()
 	AC.AddApp("/", "Home", apps.HomeContentProducer)
 	AC.AddApp("/form", "Form", apps.FormContentProducer)
+	AC.AddApp("/chat", "Chat", apps.ChatContentProducer)
 	AC.Setup(url)
 }
 

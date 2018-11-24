@@ -1,0 +1,23 @@
+{
+    "name": "go-app",
+    "version": "1.0.0",
+    "main": "index.html",
+    "dependencies": {
+        "bootstrap": "^4.1.2",
+        "bootstrap4-datetimepicker": "^5.2.3",
+        "d3": "^5.5.0",
+        "d3-tip": "^0.9.1",
+        "datatables.net": "^1.10.19",
+        "datatables.net-bs4": "^1.10.19",
+        "dropzone": "^5.5.1",
+        "font-awesome": "^4.7.0",
+        "jquery": "^3.3.1",
+        "moment": "^2.22.2",
+        "moment-duration-format": "^2.2.2",
+        "select2": "^4.0.6-rc.1",
+        "select2-bootstrap4-theme": "^1.0.0",
+        "orgchart": "^2.1.1"
+    },
+    "author": "Arun Barua <arunsworld@gmail.com> (http://www.arunsworld.com)",
+    "license": "ISC"
+}

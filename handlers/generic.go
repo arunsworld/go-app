@@ -14,6 +14,9 @@ const staticPrefix = "/static/"
 // SetupStatic sets up the static routes
 func SetupStatic(m *mux.Router, staticBox *packr.Box) {
 	mime.AddExtensionType(".map", "text/plain")
+	mime.AddExtensionType(".woff2", "font/woff2")
+	mime.AddExtensionType(".woff", "font/woff")
+	mime.AddExtensionType(".ttf", "font/ttf")
 
 	m.PathPrefix(staticPrefix).Handler(http.StripPrefix(staticPrefix, http.FileServer(staticBox)))
 }

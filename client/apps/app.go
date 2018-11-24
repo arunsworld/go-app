@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"github.com/gopherjs/gopherjs/js"
 	"honnef.co/go/js/dom"
 )
 
@@ -9,6 +10,10 @@ var (
 	D = dom.GetWindow().Document().(dom.HTMLDocument)
 	// H is the history of the window
 	H = dom.GetWindow().History()
+	// O is the JS Object constructor
+	O = js.Global.Get("Object")
+	// JSON is the JSON javascript object
+	JSON = js.Global.Get("JSON")
 )
 
 // AppCollection is a collection of App(s)
