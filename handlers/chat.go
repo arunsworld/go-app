@@ -53,7 +53,20 @@ type Chatter struct {
 	conn       *websocket.Conn
 	lastActive time.Time
 	writes     chan []byte
-	evict      chan struct{}
+	eviction   chan struct{}
+}
+
+// NewChatter returns a brand new chatter for given connection
+func NewChatter(conn *websocket.Conn) *Chatter {
+	connectionUUID, _ := uuid.NewV4()
+	return &Chatter{
+		uuid:       connectionUUID.String(),
+		name:       "",
+		conn:       conn,
+		lastActive: time.Now(),
+		writes:     make(chan []byte, 5),
+		eviction:   make(chan struct{}, 1),
+	}
 }
 
 // Method on chatter that takes responsibility for writing to the WebSocket
@@ -65,7 +78,7 @@ func (c *Chatter) run() {
 			if err := c.conn.WriteMessage(websocket.TextMessage, p); err != nil {
 				log.Printf("Couldn't send message to: %s. (%s). Error: %v.\n", c.name, c.uuid, err)
 			}
-		case <-c.evict:
+		case <-c.eviction:
 			chatters.Delete(c.uuid)
 			if closeErr := c.conn.Close(); closeErr != nil {
 				log.Println("Error while closing:", closeErr)
@@ -87,6 +100,13 @@ func (c *Chatter) send(data []byte) {
 	}
 }
 
+func (c *Chatter) evict() {
+	select {
+	case c.eviction <- struct{}{}:
+	default:
+	}
+}
+
 type chatMessage struct {
 	Name string `json:"name"`
 	Text string `json:"text"`
@@ -101,15 +121,7 @@ func ChatWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	connectionUUID, _ := uuid.NewV4()
-	chatter := &Chatter{
-		uuid:       connectionUUID.String(),
-		name:       "",
-		conn:       conn,
-		lastActive: time.Now(),
-		writes:     make(chan []byte, 5),
-		evict:      make(chan struct{}, 3),
-	}
+	chatter := NewChatter(conn)
 	chatters.Store(chatter.uuid, chatter)
 	go chatter.run()
 	log.Println("Got a new connection:", chatter.uuid)
@@ -117,7 +129,7 @@ func ChatWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		_, p, err := conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
-			chatter.evict <- struct{}{}
+			chatter.evict()
 			return
 		}
 		msg := parseMessage(p)
@@ -152,7 +164,7 @@ func cleanupSweep() {
 	})
 	for _, chatter := range evictionList {
 		fmt.Printf("Evicting %s due to timeout.\n", chatter.name)
-		chatter.evict <- struct{}{}
+		chatter.evict()
 	}
 }
 
