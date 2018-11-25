@@ -57,6 +57,8 @@ var chatContentHTML = `
 </div>
 `
 
+var ping = js.Global.Get("Audio").New("/static/audio/ping.mp3")
+
 // ChatContentProducer produces the DIV for chat with all the behaviors using WebSocket
 var ChatContentProducer = func() *dom.HTMLDivElement {
 	f, result := divElementFromContent(chatContentHTML)
@@ -145,12 +147,17 @@ var ChatContentProducer = func() *dom.HTMLDivElement {
 				dark := true
 				left := false
 				peerName := msgO.Get("name").String()
+				playPing := true
 				if peerName == name.Value {
 					dark = false
 					left = true
+					playPing = false
 				}
 				msgE := newMessage(msgO.Get("text").String(), peerName, dark, left)
 				messages.InsertBefore(msgE, messages.FirstChild())
+				if playPing {
+					ping.Call("play")
+				}
 				// js.Global.Call("jQuery", messages).Call("scrollTop", 1000000)
 			}
 		}

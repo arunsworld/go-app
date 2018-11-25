@@ -77,6 +77,16 @@ func (c *Chatter) run() {
 	}
 }
 
+// send sends data to the writes channel. Wrapped around a select block with default to ensure
+// it's non-blocking in case the writes channel is saturated.
+func (c *Chatter) send(data []byte) {
+	select {
+	case c.writes <- data:
+	default:
+		fmt.Printf("Loosing message for: %s. (%s).\n", c.name, c.uuid)
+	}
+}
+
 type chatMessage struct {
 	Name string `json:"name"`
 	Text string `json:"text"`
@@ -122,7 +132,7 @@ func ChatWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			// Broadcast message to all chatters
 			chatters.Range(func(uid, c interface{}) bool {
 				peer := c.(*Chatter)
-				peer.writes <- p
+				peer.send(p)
 				return true
 			})
 		}
@@ -158,7 +168,7 @@ func replyToWho(chatter *Chatter) {
 	}
 	whoReplyMsg := chatMessage{Name: "Chat Bot", Text: replyMsg}
 	whoReply, _ := json.Marshal(whoReplyMsg)
-	chatter.writes <- whoReply
+	chatter.send(whoReply)
 }
 
 func parseMessage(p []byte) *chatMessage {
@@ -175,7 +185,7 @@ func broadcastEviction(chatter *Chatter) {
 	evictionMsgJSON, _ := json.Marshal(evictionMsg)
 	chatters.Range(func(uid, c interface{}) bool {
 		peer := c.(*Chatter)
-		peer.writes <- evictionMsgJSON
+		peer.send(evictionMsgJSON)
 		return true
 	})
 }

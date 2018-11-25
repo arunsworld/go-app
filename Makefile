@@ -2,7 +2,7 @@
 kick: clean
 	cd client; gopherjs build
 	cd assets/static; ln -s ../../client/client.js* .
-	export PORT=9095; kick -appPath=$(PWD) -mainSourceFile=main.go -gopherjsAppPath=client
+	export PORT=9095; go-kick -appPath=$(PWD) -mainSourceFile=main.go -gopherjsAppPath=client
 
 build: buildprep
 	packr2 build; packr2 clean

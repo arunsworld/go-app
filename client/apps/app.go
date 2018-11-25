@@ -91,7 +91,7 @@ func (ac *appCollection) monitorNavigation() {
 		content := D.GetElementByID("content").(*dom.HTMLDivElement)
 		content.SetInnerHTML("")
 		content.AppendChild(targetApp.content)
-		H.PushState(struct{}{}, "", targetApp.url)
+		H.PushState(nil, "", targetApp.url)
 	}
 }
 
