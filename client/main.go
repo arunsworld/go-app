@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/arunsworld/go-app/client/apps"
+	"github.com/arunsworld/go-js-dom"
 	"github.com/arunsworld/gopherjs/dropzone"
-	"honnef.co/go/js/dom"
 )
 
 var (

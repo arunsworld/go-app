@@ -1,8 +1,8 @@
 package apps
 
 import (
+	"github.com/arunsworld/go-js-dom"
 	"github.com/gopherjs/gopherjs/js"
-	"honnef.co/go/js/dom"
 )
 
 var (

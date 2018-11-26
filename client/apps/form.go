@@ -10,7 +10,7 @@ import (
 
 	"github.com/gopherjs/gopherjs/js"
 
-	"honnef.co/go/js/dom"
+	"github.com/arunsworld/go-js-dom"
 )
 
 var formContentHTML = `

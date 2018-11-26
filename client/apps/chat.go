@@ -1,10 +1,10 @@
 package apps
 
 import (
+	"github.com/arunsworld/go-js-dom"
 	"github.com/arunsworld/gopherjs/websocket"
 	"github.com/gopherjs/gopherjs/js"
 	"honnef.co/go/js/console"
-	"honnef.co/go/js/dom"
 )
 
 var chatContentHTML = `
