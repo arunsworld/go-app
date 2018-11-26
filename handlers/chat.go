@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gobuffalo/uuid"
+	"github.com/gofrs/uuid"
 
 	"github.com/gorilla/websocket"
 )

@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gobuffalo/uuid"
+	"github.com/gofrs/uuid"
 )
 
 type creds struct {
