@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/arunsworld/go-app/handlers"
-	packr "github.com/gobuffalo/packr/v2"
 	"github.com/unrolled/secure"
 
 	"github.com/NYTimes/gziphandler"
@@ -17,14 +16,13 @@ import (
 )
 
 func main() {
-	box := packr.New("templates", "./assets/templates/")
-	staticBox := packr.New("static", "./assets/static/")
 
 	mux := mux.NewRouter()
 
-	mux.HandleFunc("/", handlers.IndexHandler(box))
-	mux.HandleFunc("/form", handlers.IndexHandler(box))
-	mux.HandleFunc("/chat", handlers.IndexHandler(box))
+	indexHandler := handlers.IndexHandler()
+	mux.HandleFunc("/", indexHandler)
+	mux.HandleFunc("/form", indexHandler)
+	mux.HandleFunc("/chat", indexHandler)
 	mux.HandleFunc("/chatws", handlers.ChatWebSocketHandler)
 
 	api := mux.PathPrefix("/api").Subrouter()
@@ -32,7 +30,7 @@ func main() {
 	api.HandleFunc("/form-submit", handlers.FormHandler).Methods("POST")
 	api.HandleFunc("/upload", handlers.UploadHandler).Methods("POST")
 
-	handlers.SetupStatic(mux, staticBox)
+	handlers.SetupStatic(mux)
 
 	port, ok := os.LookupEnv("PORT")
 	if !ok {

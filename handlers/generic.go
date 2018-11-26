@@ -5,25 +5,28 @@ import (
 	"mime"
 	"net/http"
 
-	"github.com/gobuffalo/packr/v2"
+	"github.com/arunsworld/go-app/assets"
+
 	"github.com/gorilla/mux"
 )
 
 const staticPrefix = "/static/"
 
 // SetupStatic sets up the static routes
-func SetupStatic(m *mux.Router, staticBox *packr.Box) {
+func SetupStatic(m *mux.Router) {
 	mime.AddExtensionType(".map", "text/plain")
 	mime.AddExtensionType(".woff2", "font/woff2")
 	mime.AddExtensionType(".woff", "font/woff")
 	mime.AddExtensionType(".ttf", "font/ttf")
 
-	m.PathPrefix(staticPrefix).Handler(http.StripPrefix(staticPrefix, http.FileServer(staticBox)))
+	staticFS := assets.StaticFiles()
+	m.PathPrefix(staticPrefix).Handler(http.StripPrefix(staticPrefix, http.FileServer(staticFS.FS())))
 }
 
 // IndexHandler serves /
-func IndexHandler(box *packr.Box) http.HandlerFunc {
-	index, err := box.Find("index.html")
+func IndexHandler() http.HandlerFunc {
+	templatesFS := assets.TemplatesFiles()
+	index, err := templatesFS.ReadFile("/index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
