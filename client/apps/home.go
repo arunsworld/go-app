@@ -30,7 +30,13 @@ var homeHTML = `
             <li>The <a href="https://golang.org">Go</a> programming language. This package uses Go for programming
                 both the back-end and the front-end.</li>
             <li><a href="https://github.com/gopherjs/gopherjs">GopherJS</a> library and utility is used to
-                produce Javascript to run on the browser.
+                produce Javascript to run on the browser. Install with:</li>
+            <code>
+            go get -u github.com/gopherjs/gopherjs
+            </code>
+            <li>To compile into a single binary I'm using <a href="https://github.com/gobuffalo/packr/tree/master/v2">packr2</a>.
+            You may replace this with your own choice of library to package static files into the binary.
+            </li>
         </ol>
     </div>
 </div>
