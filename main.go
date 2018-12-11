@@ -23,6 +23,7 @@ func main() {
 	mux.HandleFunc("/", indexHandler)
 	mux.HandleFunc("/form", indexHandler)
 	mux.HandleFunc("/chat", indexHandler)
+	mux.HandleFunc("/qr", indexHandler)
 	mux.HandleFunc("/chatws", handlers.ChatWebSocketHandler)
 
 	api := mux.PathPrefix("/api").Subrouter()

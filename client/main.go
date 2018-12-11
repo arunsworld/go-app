@@ -22,6 +22,7 @@ func main() {
 	AC.AddApp("/", "Home", apps.HomeContentProducer)
 	AC.AddApp("/form", "Form", apps.FormContentProducer)
 	AC.AddApp("/chat", "Chat", apps.ChatContentProducer)
+	AC.AddApp("/qr", "Password", apps.QRCodeContentProducer)
 	AC.Setup(url)
 }
 
