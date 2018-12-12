@@ -31,6 +31,9 @@ func main() {
 	api.HandleFunc("/form-submit", handlers.FormHandler).Methods("POST")
 	api.HandleFunc("/upload", handlers.UploadHandler).Methods("POST")
 
+	createUploadDir()
+	mux.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("/tmp/uploads"))))
+
 	handlers.SetupStatic(mux)
 
 	port, ok := os.LookupEnv("PORT")
@@ -39,6 +42,20 @@ func main() {
 	}
 	fmt.Printf("Serving on port %s...\n", port)
 	serve(secureMux(mux), fmt.Sprintf(":%s", port))
+}
+
+func createUploadDir() {
+	if _, err := os.Stat("/tmp/uploads"); os.IsNotExist(err) {
+		err = os.Mkdir("/tmp/uploads", 0755)
+		if err != nil {
+			log.Fatal("Could not create uploads folder:", err)
+		}
+		return
+	}
+	info, _ := os.Stat("/tmp/uploads")
+	if !info.IsDir() {
+		log.Fatal("/tmp/uploads is not a directory...")
+	}
 }
 
 func secureMux(mux *mux.Router) http.Handler {
@@ -62,8 +79,8 @@ func serve(handler http.Handler, address string) {
 	srv := http.Server{
 		Addr:         address,
 		Handler:      handler,
-		ReadTimeout:  time.Second * 15,
-		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Minute * 3,
+		WriteTimeout: time.Minute * 3,
 	}
 	log.Fatal(srv.ListenAndServe())
 }

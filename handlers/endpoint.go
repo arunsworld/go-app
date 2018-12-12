@@ -64,14 +64,15 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	targetFile, err := os.Create(u.String() + header.Filename)
+	newFilename := u.String() + header.Filename
+	targetFile, err := os.Create("/tmp/uploads/" + newFilename)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer targetFile.Close()
 	io.Copy(targetFile, f)
-	fmt.Fprintln(w, "OK")
+	fmt.Fprintln(w, newFilename)
 }
 
 // UploadIntrospectionHandler deals with file uploads for introspection purposes
