@@ -16,7 +16,7 @@ var qrcodeContentHTML = `
 					<div class="card-body">
 						<img id="qrcode-img" class="card-img-top" max-width="256" max-height="256"></img>
 						<hr/>
-						<form>
+						<form onSubmit="return false">
 							<div class="form-group">
 								<input type="password" class="form-control" id="qrcode-text" placeholder="Enter secret...">
 							</div>

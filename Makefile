@@ -15,7 +15,7 @@ dockerize: buildprep
 	docker build -t arunsworld/go-app:1.0.0 .
 
 buildprep: clean
-	cd client; gopherjs build
+	cd client; gopherjs build -m
 	cd assets/static; cp ../../client/client.js* .
 	statics -i=assets/static -o=assets/static.go -pkg=assets -group=Assets  -prefix=assets/static
 	statics -i=assets/templates -o=assets/templates.go -pkg=assets -group=Templates  -prefix=assets/templates
